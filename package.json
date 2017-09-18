@@ -1,0 +1,18 @@
+{
+  "name": "attachment-downloader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Munir Khakhi",
+  "license": "ISC",
+  "dependencies": {
+    "atob": "^2.0.3",
+    "google-auth-library": "^0.11.0",
+    "googleapis": "^21.3.0",
+    "inquirer": "^3.2.3",
+    "lodash": "^4.17.4"
+  }
+}
