@@ -130,16 +130,26 @@ function listLabels(auth) {
 function main(auth) {
   let labels;
   let coredata = {};
-  listLabels(auth)
-    .then((response) => {
-      console.log('labels');
-      labels = response.labels;
-      return labels;
-    })
-    .then(askForLabel)
-    .then((selectedLabel) => {
-      coredata.label = selectedLabel;
-      return getListOfMailIdByLabel(auth, coredata.label.id);
+  askForFilter()
+    .then((option) => {
+      if (option === 'label') {
+        return listLabels(auth)
+          .then((response) => {
+            console.log('labels');
+            labels = response.labels;
+            return labels;
+          })
+          .then(askForLabel)
+          .then((selectedLabel) => {
+            coredata.label = selectedLabel;
+            return getListOfMailIdByLabel(auth, coredata.label.id);
+          });
+      } else {
+        return askForMail()
+          .then((mailId) => {
+            return getListOfMailIdByFromId(auth, mailId);
+          });
+      }
     })
     .then((mailList) => {
       coredata.mailList = mailList;
@@ -165,7 +175,6 @@ function fetchAndSaveAttachments(auth, attachments) {
 function fetchAndSaveAttachment(auth, attachment) {
   return new Promise((resolve, reject) => {
     const gmail = google.gmail('v1');
-    console.log(attachment.id);
     gmail.users.messages.attachments.get({
       auth: auth,
       userId: 'me',
@@ -178,13 +187,47 @@ function fetchAndSaveAttachment(auth, attachment) {
       }
       var data = response.data.replaceAll('-','+');
       data = data.replaceAll('_','/');
-      fs.writeFile(path.resolve(__dirname, 'files', attachment.name), fixBase64(data), function(err) {
-          if(err) {
-              reject(err);
-          }
-          resolve(`${attachment.name} file was saved!`);
-      });
-      // console.log(response);
+      var content = fixBase64(data);
+      resolve(content);
+    });
+  })
+  .then((content) => {
+    var fileName = path.resolve(__dirname, 'files', attachment.name);
+    return isFileExist(fileName)
+      .then((isExist) => {
+        if (isExist) {
+          return getNewFileName(fileName);
+        }
+        return fileName;
+      })
+      .then((availableFileName) => {
+        return saveFile(availableFileName, content);        
+      })
+  })
+}
+
+function isFileExist(fileName) {
+  return new Promise((resolve, reject) => {
+    fs.stat(fileName, (err) => {
+      if (err) {
+        resolve(false);
+      }
+      resolve(true);
+    })
+  });
+}
+
+function getNewFileName(fileName) {
+  return fileName.split('.')[0] + ' (' + Date.now() + ')' +  fileName.split('.')[1];
+}
+
+function saveFile(fileName, content) {
+  return new Promise((resolve, reject) => {
+    fs.writeFile(fileName, content, function(err) {
+      if(err) {
+          reject(err);
+      }
+      resolve(`${fileName} file was saved!`);
     });
   });
 }
@@ -213,6 +256,36 @@ function askForLabel(labels) {
     .then(answers => answers.label);
 }
 
+function askForFilter(labels) {
+  return inquirer.prompt([
+      {
+        type: 'list',
+        name: 'option',
+        message: 'How do you like to filter',
+        choices: ['Using from email Id', 'Using label'],
+        filter: val => {
+          if (val === 'Using from email Id') {
+            return 'from';
+          } else {
+            'label'
+          }
+        }
+      }
+    ])
+    .then(answers => answers.option);
+}
+
+function askForMail() {
+  return inquirer.prompt([
+    {
+      type: 'input',
+      name: 'from',
+      message: 'Enter from mailId:'
+    }
+  ])
+  .then(answers => answers.from);
+}
+
 function getListOfMailIdByLabel(auth, labelId, maxResults = 500) {
   return new Promise((resolve, reject) => {
     const gmail = google.gmail('v1');
@@ -220,6 +293,24 @@ function getListOfMailIdByLabel(auth, labelId, maxResults = 500) {
         auth: auth,
         userId: 'me',
         labelIds: labelId,
+        maxResults: maxResults
+      }, function(err, response) {
+        if (err) {
+          console.log('The API returned an error: ' + err);
+          reject(err);
+        }
+        resolve(response.messages);
+      });
+  });
+}
+
+function getListOfMailIdByFromId(auth, mailId, maxResults = 500) {
+  return new Promise((resolve, reject) => {
+    const gmail = google.gmail('v1');
+    gmail.users.messages.list({
+        auth: auth,
+        userId: 'me',
+        q: 'from:' + mailId,
         maxResults: maxResults
       }, function(err, response) {
         if (err) {
