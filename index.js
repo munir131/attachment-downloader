@@ -102,7 +102,7 @@ function storeToken(token) {
       throw err;
     }
   }
-  fs.writeFile(TOKEN_PATH, JSON.stringify(token));
+  fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
   console.log('Token stored to ' + TOKEN_PATH);
 }
 
@@ -142,12 +142,12 @@ function main(auth) {
           .then(askForLabel)
           .then((selectedLabel) => {
             coredata.label = selectedLabel;
-            return getListOfMailIdByLabel(auth, coredata.label.id);
+            return getListOfMailIdByLabel(auth, coredata.label.id, 200);
           });
       } else {
         return askForMail()
           .then((mailId) => {
-            return getListOfMailIdByFromId(auth, mailId);
+            return getListOfMailIdByFromId(auth, mailId, 50);
           });
       }
     })
@@ -184,6 +184,10 @@ function fetchAndSaveAttachment(auth, attachment) {
       if (err) {
         console.log('The API returned an error: ' + err);
         reject(err);
+      }
+      if (!response) {
+        console.log('Empty response: ' + response);
+        reject(response);
       }
       var data = response.data.replaceAll('-','+');
       data = data.replaceAll('_','/');
@@ -267,7 +271,7 @@ function askForFilter(labels) {
           if (val === 'Using from email Id') {
             return 'from';
           } else {
-            'label'
+            return 'label';
           }
         }
       }
