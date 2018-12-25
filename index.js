@@ -166,8 +166,11 @@ function main(auth) {
 }
 
 function fetchAndSaveAttachments(auth, attachments) {
-  var promises = _.map(attachments, (attachment) => {
-    return fetchAndSaveAttachment(auth, attachment);
+  var promises = [];
+  _.each(attachments, (attachment) => {
+    if (attachment.id) {
+      promises.push(fetchAndSaveAttachment(auth, attachment));
+    }
   });
   return Promise.all(promises);
 }
@@ -205,7 +208,7 @@ function fetchAndSaveAttachment(auth, attachment) {
         return fileName;
       })
       .then((availableFileName) => {
-        return saveFile(availableFileName, content);        
+        return saveFile(availableFileName, content);
       })
   })
 }
