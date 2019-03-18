@@ -2,7 +2,7 @@
 
 Currently gmail is not providing to download attachments from different different mails with in single click. Using this program you can do it now.
 
-You need `client_secret.json` before start this utility. You can create it from https://console.developers.google.com/apis/credentials
+You need `credentials.json` before start this utility. You can get it from https://developers.google.com/gmail/api/quickstart/nodejs by enable GMAIL API.
 
 Clone Project
 
