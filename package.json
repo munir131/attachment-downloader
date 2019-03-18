@@ -1,18 +1,40 @@
 {
   "name": "attachment-downloader",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.1.0",
+  "description": "Gmail bulk attachment downloader",
   "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "atob": "^2.1.2",
+    "googleapis": "^38.0.0",
+    "inquirer": "^6.2.1",
+    "lodash": "^4.17.11"
+  },
+  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/munir131/attachment-downloader.git"
+  },
+  "keywords": [
+    "Gmail",
+    "Bulk",
+    "Attachment",
+    "Download",
+    "Node",
+    "Google",
+    "API",
+    "oAuth",
+    "Decrypt"
+  ],
   "author": "Munir Khakhi",
-  "license": "ISC",
-  "dependencies": {
-    "atob": "^2.1.2",
-    "google-auth-library": "^0.11.0",
-    "googleapis": "^21.3.0",
-    "inquirer": "^6.2.1",
-    "lodash": "^4.17.11"
-  }
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/munir131/attachment-downloader/issues"
+  },
+  "homepage": "https://github.com/munir131/attachment-downloader#readme"
 }
