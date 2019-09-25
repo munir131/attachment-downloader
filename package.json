@@ -10,9 +10,9 @@
     "atob": "^2.1.2",
     "googleapis": "^38.0.0",
     "inquirer": "^6.2.1",
-    "lodash": "^4.17.11",
     "moment": "^2.24.0",
-    "moment-timezone": "^0.5.23"
+    "moment-timezone": "^0.5.23",
+    "lodash": "^4.17.13"
   },
   "devDependencies": {},
   "scripts": {
