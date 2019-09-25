@@ -1,6 +1,6 @@
 {
   "name": "attachment-downloader",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Gmail bulk attachment downloader",
   "main": "index.js",
   "directories": {
@@ -10,7 +10,9 @@
     "atob": "^2.1.2",
     "googleapis": "^38.0.0",
     "inquirer": "^6.2.1",
-    "lodash": "^4.17.11"
+    "lodash": "^4.17.11",
+    "moment": "^2.24.0",
+    "moment-timezone": "^0.5.23"
   },
   "devDependencies": {},
   "scripts": {
@@ -36,5 +38,6 @@
   "bugs": {
     "url": "https://github.com/munir131/attachment-downloader/issues"
   },
-  "homepage": "https://github.com/munir131/attachment-downloader#readme"
+  "homepage": "https://github.com/munir131/attachment-downloader#readme",
+  "publishConfig": { "registry": "https://npm.pkg.github.com/" }
 }
