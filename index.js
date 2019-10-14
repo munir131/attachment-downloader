@@ -36,27 +36,14 @@ function listLabels(auth, gmail) {
 function main(auth, gmailInstance) {
   let labels;
   let coredata = {};
+  let workflow;
   gmail = gmailInstance;
-  askForFilter()
-    .then((option) => {
-      if (option === 'label') {
-        return listLabels(auth, gmail)
-          .then((response) => {
-            labels = response.data.labels;
-            return labels;
-          })
-          .then(askForLabel)
-          .then((selectedLabel) => {
-            coredata.label = selectedLabel;
-            return getListOfMailIdByLabel(auth, coredata.label.id, 200);
-          });
-      } else {
-        return askForMail()
-          .then((mailId) => {
-            return getListOfMailIdByFromId(auth, mailId, 50);
-          });
-      }
-    })
+  if (detectCommandOptions()) {
+    workflow = scanForLabelOption;
+  } else {
+    workflow = defaultBehaviour;
+  }
+  workflow(auth, gmail, coredata)
     .then((mailList) => {
       coredata.mailList = mailList;
       return fetchMailsByMailIds(auth, mailList);
@@ -70,6 +57,51 @@ function main(auth, gmailInstance) {
     })
     .catch((e) => console.log(e));
 }
+
+const detectCommandOptions = () => process.argv.length > 2;
+
+const defaultBehaviour = (auth, gmail, coredata) => {
+    return askForFilter()
+            .then((option) => {
+              if (option === 'label') {
+                return listLabels(auth, gmail)
+                  .then((response) => {
+                    labels = response.data.labels;
+                    return labels;
+                  })
+                  .then(askForLabel)
+                  .then((selectedLabel) => {
+                    coredata.label = selectedLabel;
+                    return getListOfMailIdByLabel(auth, coredata.label.id, 200);
+                  });
+              } else {
+                return askForMail()
+                  .then((mailId) => {
+                    return getListOfMailIdByFromId(auth, mailId, 50);
+                  });
+              }
+            });
+};
+
+const scanForLabelOption = (auth, gmail) => {
+  return new Promise((resolve,reject) => {
+    const paramsNumber = process.argv.length;
+    if (paramsNumber == 4) {
+      const optionName = process.argv[2];
+      if (optionName === '--label') {
+        resolve(process.argv[3]);
+      }
+    }    
+    reject("WARNING: expected --label LABEL_NAME option")
+    })
+    .then(labelName => {
+      return listLabels(auth, gmail)
+        .then(response => {
+          const labelObj = _.find(response.data.labels, l => l.name === labelName);
+          return getListOfMailIdByLabel(auth, labelObj.id, 200);
+        });
+      });
+};
 
 function fetchAndSaveAttachments(auth, attachments) {
   var promises = [];
