@@ -12,6 +12,10 @@ Install dependencies
 
 `npm i`
 
-Run program
+Run program in interactive mode
 
 `node index.js`
+
+Run program in non-interactive mode
+
+`node index.js --label LABEL_NAME`
