@@ -1,0 +1,1 @@
+CREATE TABLE mails (id varchar(30) PRIMARY KEY, threadId varchar(30), created_at integer);

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "atob": "^2.1.2",
+    "cli-progress": "^3.4.0",
     "googleapis": "^38.0.0",
     "inquirer": "^6.2.1",
     "moment": "^2.24.0",

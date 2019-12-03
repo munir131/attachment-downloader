@@ -3,7 +3,8 @@ const atob = require('atob');
 const fs = require('fs');
 const inquirer = require('inquirer');
 const path = require('path');
-
+const sqlite = require('./lib/sqliteHelper');
+const db = sqlite.getDBConn();
 const AuthFetcher = require('./lib/googleAPIWrapper');
 let gmail;
 String.prototype.replaceAll = function(search, replacement) {
@@ -36,76 +37,50 @@ function listLabels(auth, gmail) {
 function main(auth, gmailInstance) {
   let labels;
   let coredata = {};
-  let workflow;
   gmail = gmailInstance;
-  if (detectCommandOptions()) {
-    workflow = scanForLabelOption;
-  } else {
-    workflow = defaultBehaviour;
-  }
-  workflow(auth, gmail, coredata)
-  .then((mailList) => {
-      console.log(mailList);
-      coredata.mailList = mailList;
-      return fetchMailsByMailIds(auth, mailList);
-    })
-    .then((mails) => {
-      coredata.attachments = pluckAttachment(mails);
-      return fetchAndSaveAttachments(auth, coredata.attachments);
-    })
-    .then(() => {
-      console.log('Done');
-    })
-    .catch((e) => console.log(e));
+    // getListOfMailId(auth) 
+    // .then((mailList) => {
+    //     db.run("BEGIN TRANSACTION");
+    //     db.parallelize(function() {
+    //         _.each(mailList, function(mail, index) {
+    //             db.run('REPLACE into mails (id, threadId, created_at) values (?,?,?)', [mail.id, mail.threadId, Date.now()], () => {
+    //                 console.log(index + ' inserted');
+    //             });    
+    //             });
+    //     });
+    //     db.run("COMMIT");
+    // })
+    // .then(() => {
+    //   return fetchMailsByMailIds(auth, mailList);
+    // })
+    // .then((mails) => {
+    //   coredata.attachments = pluckAttachment(mails);
+    //   return fetchAndSaveAttachments(auth, coredata.attachments);
+    // })
+    // .catch((e) => console.log(e));
+    db.all('select count(*) as count from mails', (err, data) => {
+      const total = data[0].count;
+      chunkFetchAndStore(auth, total, 20, 1420);
+    });
 }
 
-const detectCommandOptions = () => process.argv.length > 2;
-
-const defaultBehaviour = (auth, gmail, coredata) => {
-    return askForFilter()
-      .then((option) => {
-        if (option === 'label') {
-          return listLabels(auth, gmail)
-            .then((response) => {
-              labels = response.data.labels;
-              return labels;
-            })
-            .then(askForLabel)
-            .then((selectedLabel) => {
-              coredata.label = selectedLabel;
-              return getListOfMailIdByLabel(auth, coredata.label.id, 200);
-            });
-        } else if(option === 'all') {
-          return getListOfMailId(auth); 
-        } else {
-          return askForMail()
-            .then((mailId) => {
-              return getListOfMailIdByFromId(auth, mailId, 50);
-            });
-        }
-      });
-    
-};
-
-const scanForLabelOption = (auth, gmail) => {
-  return new Promise((resolve,reject) => {
-    const paramsNumber = process.argv.length;
-    if (paramsNumber == 4) {
-      const optionName = process.argv[2];
-      if (optionName === '--label') {
-        resolve(process.argv[3]);
-      }
-    }    
-    reject("WARNING: expected --label LABEL_NAME option")
-    })
-    .then(labelName => {
-      return listLabels(auth, gmail)
-        .then(response => {
-          const labelObj = _.find(response.data.labels, l => l.name === labelName);
-          return getListOfMailIdByLabel(auth, labelObj.id, 200);
+function chunkFetchAndStore(auth, total, size, offset = 0) {
+    if (offset + size < total) {
+      db.all(`select * from mails limit ${size} offset ${offset}`, (err, mailList) => {
+        return fetchMailsByMailIds(auth, mailList)
+          .then((mails) => {
+            let attachments = pluckAttachment(mails);
+            return fetchAndSaveAttachments(auth, attachments);
+          })
+          .then(() => {
+            console.log(`${offset + size} done`);
+            chunkFetchAndStore(auth, total, size, offset + size);
+          })
         });
-      });
-};
+    } else {
+      console.log('Done');
+    }
+}
 
 function fetchAndSaveAttachments(auth, attachments) {
   var promises = [];
@@ -194,11 +169,15 @@ function saveFile(fileName, content) {
 
 function pluckAttachment(mails) {
   return _.compact(_.map(mails, (m) => {
-    if (!m.data || !m.data.payload || !m.data.payload.parts) {
+    if (!m.data) {
       return undefined;
     }
-    const fromMeta = _.find(m.data.payload.headers, {'name': 'From'});
-    let fromId = fromMeta.value.split(">")[0].split('<')[1];
+    let fromMeta = _.find(m.data.payload.headers, {'name': 'From'});
+    if (!fromMeta) {
+      fromMeta = _.find(m.data.payload.headers, {'name': 'FROM'});
+      console.log(fromMeta);
+    }
+    let fromId = fromMeta ? fromMeta.value.split(">")[0].split('<')[1] : 'UNKNOWN'; 
     if (!fromId) {
       fromId = fromMeta.value;
     }
@@ -328,24 +307,10 @@ function getListOfMailIdByFromId(auth, mailId, maxResults = 500) {
 }
 
 function fetchMailsByMailIds(auth, mailList) {
-  let resolvedPromise = Promise.resolve();
-  let mailDatas = [];
   const promises = _.map(mailList, (mail) => {
-    resolvedPromise = resolvedPromise.then((mailData) => {
-      if (mailData) {
-        mailDatas.push(mailData);
-      }
-      console.log('mail fetched');
-      return getMail(auth, mail.id);
-    })
+    return getMail(auth, mail.id);
   });
-  resolvedPromise = resolvedPromise.then((mailData) => {
-    if (mailData) {
-      mailDatas.push(mailData);
-    }
-    return mailDatas;
-  })
-  return resolvedPromise;
+  return Promise.all(promises);
 }
 
 function getMail(auth, mailId) {
