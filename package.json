@@ -11,9 +11,10 @@
     "cli-progress": "^3.4.0",
     "googleapis": "^38.0.0",
     "inquirer": "^6.2.1",
+    "lodash": "^4.17.13",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.23",
-    "lodash": "^4.17.13"
+    "sqlite3": "^4.1.0"
   },
   "devDependencies": {},
   "scripts": {
@@ -40,5 +41,7 @@
     "url": "https://github.com/munir131/attachment-downloader/issues"
   },
   "homepage": "https://github.com/munir131/attachment-downloader#readme",
-  "publishConfig": { "registry": "https://npm.pkg.github.com/" }
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  }
 }

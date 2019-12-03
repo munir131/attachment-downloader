@@ -60,7 +60,7 @@ function main(auth, gmailInstance) {
     // .catch((e) => console.log(e));
     db.all('select count(*) as count from mails', (err, data) => {
       const total = data[0].count;
-      chunkFetchAndStore(auth, total, 20, 1420);
+      chunkFetchAndStore(auth, total, 20, 5000);
     });
 }
 
@@ -152,7 +152,7 @@ function isFileExist(fileName) {
 
 function getNewFileName(fileName) {
   let filePathChunks  = fileName.split('.');
-  return filePathChunks.splice(0, filePathChunks.length -1).join('.') + '-' + Date.now() + '-.' +  filePathChunks;
+  return filePathChunks.splice(0, filePathChunks.length -1).join('.') + '-' + Date.now() + '.' +  filePathChunks;
 }
 
 function saveFile(fileName, content) {
