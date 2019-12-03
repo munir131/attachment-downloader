@@ -178,7 +178,7 @@ function saveFile(fileName, content) {
 
 function pluckAttachment(mails) {
   return _.compact(_.map(mails, (m) => {
-    if (!m.data) {
+    if (!m.data || !m.data.payload || !m.data.payload.parts) {
       return undefined;
     }
     const attachment = {
