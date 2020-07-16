@@ -12,7 +12,7 @@
     "inquirer": "^6.2.1",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.23",
-    "lodash": "^4.17.13"
+    "lodash": "^4.17.19"
   },
   "devDependencies": {},
   "scripts": {
