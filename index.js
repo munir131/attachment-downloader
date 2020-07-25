@@ -103,14 +103,25 @@ const scanForLabelOption = (auth, gmail) => {
       });
 };
 
-function fetchAndSaveAttachments(auth, attachments) {
-  var promises = [];
-  _.each(attachments, (attachment) => {
-    if (attachment.id) {
-      promises.push(fetchAndSaveAttachment(auth, attachment));
+async function fetchAndSaveAttachments(auth, attachments) {
+  let results = [];
+  let promises = [];
+  let counter = 0;
+  for (index in attachments) {
+    if (attachments[index].id) {
+      promises.push(fetchAndSaveAttachment(auth, attachments[index]));
+      counter++;
+      if (counter === 100) {
+        attachs = await Promise.all(promises);
+        _.merge(results, attachs);
+        promises = [];
+        counter = 0;
+      }
     }
-  });
-  return Promise.all(promises);
+  }
+  attachs = await Promise.all(promises);
+  _.merge(results, attachs);
+  return results;
 }
 
 function fetchAndSaveAttachment(auth, attachment) {
@@ -272,15 +283,26 @@ function getListOfMailIdByFromId(auth, mailId, maxResults = 500) {
   });
 }
 
-function fetchMailsByMailIds(auth, mailList) {
-  const promises = _.map(mailList, (mail) => {
-    return getMail(auth, mail.id);
-  });
-  return Promise.all(promises);
+async function fetchMailsByMailIds(auth, mailList) {
+  let results = [];
+  let promises = [];
+  let counter = 0;
+  for(index in mailList) {
+    promises.push(getMail(auth, mailList[index].id));
+    counter++;
+    if (counter === 100) {
+      mails = await Promise.all(promises);
+      _.merge(results, mails);
+      promises = [];
+      counter = 0;
+    }
+  };
+  mails = await Promise.all(promises);
+  _.merge(results, mails);
+  return results;
 }
 
 function getMail(auth, mailId) {
-
   return new Promise((resolve, reject) => {
     gmail.users.messages.get({
       userId: 'me',
