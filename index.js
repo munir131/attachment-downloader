@@ -6,6 +6,7 @@ const path = require('path');
 const ora = require('ora');
 
 const AuthFetcher = require('./lib/googleAPIWrapper');
+const FileHelper = require('./lib/fileHelper');
 const { time } = require('console');
 let pageCounter = 1;
 
@@ -165,44 +166,19 @@ function fetchAndSaveAttachment(auth, attachment) {
   })
     .then((content) => {
       var fileName = path.resolve(__dirname, 'files', attachment.name);
-      return isFileExist(fileName)
+      return FileHelper.isFileExist(fileName)
         .then((isExist) => {
           if (isExist) {
-            return getNewFileName(fileName);
+            return FileHelper.getNewFileName(fileName);
           }
           return fileName;
         })
         .then((availableFileName) => {
-          return saveFile(availableFileName, content);
+          return FileHelper.saveFile(availableFileName, content);
         })
     })
 }
 
-function isFileExist(fileName) {
-  return new Promise((resolve, reject) => {
-    fs.stat(fileName, (err) => {
-      if (err) {
-        resolve(false);
-      }
-      resolve(true);
-    })
-  });
-}
-
-function getNewFileName(fileName) {
-  return fileName.split('.')[0] + ' (' + Date.now() + ').' + fileName.split('.')[1];
-}
-
-function saveFile(fileName, content) {
-  return new Promise((resolve, reject) => {
-    fs.writeFile(fileName, content, function (err) {
-      if (err) {
-        reject(err);
-      }
-      resolve(`${fileName} file was saved!`);
-    });
-  });
-}
 
 function pluckAllAttachments(mails) {
   return _.compact(_.flatten(_.map(mails, (m) => {
@@ -343,17 +319,18 @@ async function fetchMailsByMailIds(auth, mailList) {
   let processed = 0;
   spinner.text = "Fetching each mail"
   for (index in mailList) {
-    promises.push(getMail(auth, mailList[index].id));
-    counter++;
-    processed++;
-    if (counter === 100) {
-      mails = await Promise.all(promises);
-      results = results.concat(mails)
-      promises = [];
-      counter = 0;
-      spinner.text = processed + " mails fetched"
-      await sleep(3000)
-
+    if (mailList[index]) {
+      promises.push(getMail(auth, mailList[index].id));
+      counter++;
+      processed++;
+      if (counter === 100) {
+        mails = await Promise.all(promises);
+        results = results.concat(mails)
+        promises = [];
+        counter = 0;
+        spinner.text = processed + " mails fetched"
+        await sleep(3000)
+      }
     }
   };
   mails = await Promise.all(promises);
@@ -362,6 +339,7 @@ async function fetchMailsByMailIds(auth, mailList) {
 }
 
 function sleep(ms) {
+  spinner.text = `sleeping for ${ms/1000} s`
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
