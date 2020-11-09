@@ -10,10 +10,13 @@
     "atob": "^2.1.2",
     "googleapis": "^39.1.0",
     "inquirer": "^6.2.1",
+    "limiter": "^1.1.5",
     "lodash": "^4.17.19",
+    "mkdirp": "^1.0.4",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.23",
-    "ora": "^5.1.0"
+    "ora": "^5.1.0",
+    "yargs": "^16.1.0"
   },
   "devDependencies": {},
   "scripts": {
