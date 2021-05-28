@@ -84,7 +84,7 @@ const defaultBehaviour = (auth, gmail, coredata) => {
             spinner.start()
             return getListOfMailIdByLabel(auth, coredata.label.id, 200);
           });
-      } else if (option === 'label') {
+      } else if (option === 'from') {
         return askForMail()
           .then((mailId) => {
             spinner.start()
