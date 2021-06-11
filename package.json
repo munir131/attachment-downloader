@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "atob": "^2.1.2",
-    "googleapis": "^39.1.0",
+    "googleapis": "^76.0.0",
     "inquirer": "^6.2.1",
     "limiter": "^1.1.5",
     "lodash": "^4.17.21",
