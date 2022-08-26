@@ -21,7 +21,9 @@ Run program in non-interactive mode
 
 `node index.js --label LABEL_NAME`
 
+## Contributors
 
+Thanks to all the people who already contributed!
 <a href="https://github.com/munir131/attachment-downloader/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=munir131/attachment-downloader" />
 </a>
