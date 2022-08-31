@@ -14,7 +14,7 @@
     "lodash": "^4.17.21",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.2",
-    "moment-timezone": "^0.5.23",
+    "moment-timezone": "^0.5.35",
     "ora": "^5.1.0",
     "yargs": "^16.1.0"
   },
