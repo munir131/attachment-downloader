@@ -257,15 +257,15 @@ function getListOfMailIdByLabel(auth, labelId, maxResults = 500, nextPageToken) 
         console.log('The API returned an error: ' + err);
         reject(err);
       }
-      if (response.data && response.data.nextPageToken) {
+      if (response.data) {
         messageIds = messageIds.concat(response.data.messages)
-        spinner.text = "Reading page: " + ++pageCounter
-        resolve(getListOfMailIdByLabel(auth, labelId, 500, response.data.nextPageToken))
-      } else {
-        messageIds = messageIds.concat(response.data.messages)
-        resolve(messageIds)
+        if (response.data.nextPageToken) {
+          spinner.text = "Reading page: " + ++pageCounter
+          resolve(getListOfMailIdByLabel(auth, labelId, maxResults, response.data.nextPageToken))
+        }
       }
-
+      spinner.text = "All pages are read"
+      resolve(messageIds)
     });
   });
 }
@@ -282,15 +282,15 @@ function getAllMails(auth, maxResults = 500, nextPageToken) {
         console.log('The API returned an error: ' + err);
         reject(err);
       }
-      if (response.data && response.data.nextPageToken) {
+      if (response.data) {
         messageIds = messageIds.concat(response.data.messages)
-        spinner.text = "Reading page: " + ++pageCounter
-        resolve(getAllMails(auth, 500, response.data.nextPageToken))
-      } else {
-        spinner.text = "All pages are read"
-        resolve(messageIds)
+        if (response.data.nextPageToken) {
+          spinner.text = "Reading page: " + ++pageCounter
+          resolve(getAllMails(auth, maxResults, response.data.nextPageToken))
+        }
       }
-
+      spinner.text = "All pages are read"
+      resolve(messageIds)
     });
   });
 }
