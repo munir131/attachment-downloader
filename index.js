@@ -185,17 +185,36 @@ function pluckAllAttachments(mails) {
     if (!m.data || !m.data.payload || !m.data.payload.parts) {
       return undefined;
     }
-    return _.map(m.data.payload.parts, (p) => {
-      if (!p.body || !p.body.attachmentId) {
-        return undefined;
-      }
-      const attachment = {
-        mailId: m.data.id,
-        name: p.filename,
-        id: p.body.attachmentId
-      };
-      return attachment;
-    })
+    if (m.data.payload.mimeType === "multipart/signed") {
+      return _.flatten(_.map(m.data.payload.parts, (p) => {
+        if (p.mimeType !== "multipart/mixed") {
+          return undefined;
+        }
+        return _.map(p.parts, (pp) => {
+          if (!pp.body || !pp.body.attachmentId) {
+            return undefined;
+          }
+          const attachment = {
+            mailId: m.data.id,
+            name: pp.filename,
+            id: pp.body.attachmentId
+          };
+          return attachment;
+        })
+      }))
+    } else {
+      return _.map(m.data.payload.parts, (p) => {
+        if (!p.body || !p.body.attachmentId) {
+          return undefined;
+        }
+        const attachment = {
+          mailId: m.data.id,
+          name: p.filename,
+          id: p.body.attachmentId
+        };
+        return attachment;
+      })
+  }
   })));
 }
 
