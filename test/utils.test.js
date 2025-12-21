@@ -1,4 +1,4 @@
-import { fixBase64, pluckAllAttachments, sanitizeFileName } from '../lib/utils.js';
+import { fixBase64, pluckAllAttachments, sanitizeFileName } from '../internal/utils.js';
 import _ from 'lodash';
 
 describe('utils', () => {
@@ -75,7 +75,9 @@ describe('utils', () => {
       expect(result[0]).toEqual({
         mailId: 'mail1',
         name: 'test.pdf',
-        id: 'att1'
+        id: 'att1',
+        from: undefined,
+        time: undefined
       });
     });
 

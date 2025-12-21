@@ -30,18 +30,25 @@ export function pluckAllAttachments(mails) {
     const payload = m.data.payload;
     if (!payload) return undefined;
 
+    const headers = payload.headers;
+    const fromHeader = _.find(headers, { name: 'From' });
+    const from = fromHeader ? fromHeader.value : undefined;
+
+    const createAttachment = (part) => ({
+      mailId: m.data.id,
+      name: part.filename,
+      id: part.body.attachmentId,
+      time: m.data.internalDate,
+      from: from
+    });
+
     if (payload.mimeType === "multipart/signed") {
       return _.flatten(_.map(payload.parts, (p) => {
         if (p.mimeType !== "multipart/mixed") return undefined;
         
         return _.map(p.parts, (pp) => {
           if (!pp.body || !pp.body.attachmentId) return undefined;
-          return {
-            mailId: m.data.id,
-            name: pp.filename,
-            id: pp.body.attachmentId,
-            time: m.data.internalDate
-          };
+          return createAttachment(pp);
         });
       }));
     }
@@ -52,12 +59,7 @@ export function pluckAllAttachments(mails) {
       if (!p.body || !p.body.attachmentId) {
         return undefined;
       }
-      return {
-        mailId: m.data.id,
-        name: p.filename,
-        id: p.body.attachmentId,
-        time: m.data.internalDate
-      };
+      return createAttachment(p);
     });
   })));
 }

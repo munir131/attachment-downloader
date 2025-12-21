@@ -3,7 +3,7 @@ import readline from 'readline';
 import { google } from 'googleapis';
 import http from 'http';
 import url from 'url';
-import logger from './logger.js';
+import logger from '../internal/logger.js';
 
 let server;
 

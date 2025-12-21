@@ -2,48 +2,62 @@
 
 **Note:** This application requires Node.js version 22 or higher.
 
-Currently gmail is not providing to download attachments from different different mails with in single click. Using this program you can do it now.
+Currently Gmail does not provide a way to download attachments from multiple emails in a single click. This utility allows you to do just that.
 
-You need `credentials.json` before start this utility. You can get it from https://developers.google.com/gmail/api/quickstart/nodejs by enable GMAIL API.
-Save file `credentials.json` in the root folder of the project
+## Setup
 
-Clone Project
+1. Enable the GMAIL API and get `credentials.json` from [Google Developers Console](https://developers.google.com/gmail/api/quickstart/nodejs).
+2. Save `credentials.json` in the root folder of the project.
+3. Clone the project:
+   ```bash
+   git clone https://github.com/munir131/attachment-downloader
+   ```
+4. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-`git clone https://github.com/munir131/attachment-downloader`
+## Usage
 
-Install dependencies
+### Interactive Mode
 
-`npm i`
+Simply run the program without arguments to start the interactive wizard:
 
-Run program in interactive mode
-
-`node index.js`
-
-It will ask where to store files (default: `./files`) and filter criteria.
-
-Run program in non-interactive mode
-
-`node index.js --label LABEL_NAME`
-
-### Custom Download Directory
-
-You can specify the download directory using the `DIR` environment variable:
-
-`DIR=/path/to/downloads node index.js`
-
-### Automated Script (`auto.js`)
-
-The `auto.js` script allows for automated execution with the following command-line arguments:
-
-| Argument | Description |
-|----------|-------------|
-| `--from` | Download files only from emails sent by the specified email address. |
-| `--ext`  | File extension to filter attachments (e.g. `pdf`). |
-| `--fy`   | Organize downloaded files into a financial year based folder structure. |
-
-**Example:**
 ```bash
-node auto.js --from "example@gmail.com" --ext "pdf" --fy
+node index.js
+```
+
+It will ask you:
+1. Where to store files (default: `./files`)
+2. How to filter emails (by Label, From address, or All)
+
+### Automated / CLI Mode
+
+You can run the program in non-interactive mode by providing arguments. This is useful for scripts or cron jobs.
+
+```bash
+node index.js [options]
+```
+
+**Options:**
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--from` | Download attachments from emails sent by a specific address | `--from "example@gmail.com"` |
+| `--label`| Download attachments from emails with a specific label | `--label "Invoices"` |
+| `--dir`  | Directory to save attachments (default: `./files`) | `--dir "./downloads"` |
+| `--fy`   | Organize downloaded files into folder structure by Financial Year | `--fy` |
+
+**Examples:**
+
+Download all attachments from a specific sender:
+```bash
+node index.js --from "boss@company.com" --dir "./work_docs"
+```
+
+Download files from a specific label organized by financial year:
+```bash
+node index.js --label "Receipts" --fy
 ```
 
 ## Contributors

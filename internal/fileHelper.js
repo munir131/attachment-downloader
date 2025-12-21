@@ -33,14 +33,22 @@ export function isFileExist(fileName) {
   });
 }
 
-export function getParentDir(argv, baseDir, time) {
+/**
+ * Resolves the target directory based on options and timestamp.
+ * @param {Object} options - { from: string|undefined, fy: boolean }
+ * @param {string} baseDir - The base directory to save to.
+ * @param {string|number} time - The timestamp of the attachment/email.
+ */
+export function getParentDir(options, baseDir, time) {
   const date = new Date(Number(time));
-  let dirPath = path.resolve(baseDir, 'files')
-  if (argv.from) {
-    dirPath = path.resolve(baseDir, 'files', argv.from)
+  let dirPath = baseDir;
+  
+  if (options.from) {
+    dirPath = path.resolve(baseDir, options.from);
   }
-  if (argv.fy) {
-    dirPath = path.resolve(dirPath, String(date.getFullYear()))
+  
+  if (options.fy) {
+    dirPath = path.resolve(dirPath, String(date.getFullYear()));
   }
-  return dirPath
+  return dirPath;
 }
