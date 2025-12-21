@@ -2,6 +2,9 @@
   "name": "attachment-downloader",
   "version": "1.2.0",
   "description": "Gmail bulk attachment downloader",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "index.js",
   "type": "module",
   "directories": {
