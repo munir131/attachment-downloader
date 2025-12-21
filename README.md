@@ -43,3 +43,13 @@ The `auto.js` script allows for automated execution with the following command-l
 ```bash
 node auto.js --from "example@gmail.com" --ext "pdf" --fy
 ```
+
+## Contributors
+
+Thanks to all the people who already contributed!
+
+<a href="https://github.com/munir131/attachment-downloader/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=munir131/attachment-downloader" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
