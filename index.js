@@ -1,248 +1,167 @@
-const _ = require('lodash');
-const atob = require('atob');
-const fs = require('fs');
-const inquirer = require('inquirer');
-const path = require('path');
-const ora = require('ora');
+import _ from 'lodash';
+import fs from 'fs';
+import inquirer from 'inquirer';
+import path from 'path';
+import ora from 'ora';
+import util from 'util';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const AuthFetcher = require('./lib/googleAPIWrapper');
-const FileHelper = require('./lib/fileHelper');
-const { time } = require('console');
+import * as AuthFetcher from './lib/googleAPIWrapper.js';
+import * as FileHelper from './lib/fileHelper.js';
+import { fixBase64, pluckAllAttachments, sanitizeFileName } from './lib/utils.js';
+import { askForFilter, askForLabel, askForMail, askForDirectory } from './lib/questions.js';
+import logger from './lib/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 let pageCounter = 1;
-
 let messageIds = [];
 let gmail;
-String.prototype.replaceAll = function (search, replacement) {
-  var target = this;
-  return target.split(search).join(replacement);
-}
 
 const spinner = ora('Reading 1 page');
 AuthFetcher.getAuthAndGmail(main);
 
-/**
- * Lists the labels in the user's account.
- *
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function listLabels(auth, gmail) {
-  return new Promise((resolve, reject) => {
-    gmail.users.labels.list({
-      auth: auth,
-      userId: 'me',
-    }, (err, response) => {
-      if (err) {
-        console.log('The API returned an error: ' + err);
-        reject(err);
-      }
-      resolve(response);
-    });
-  })
+async function listLabels(auth, gmail) {
+  const list = util.promisify(gmail.users.labels.list).bind(gmail.users.labels);
+  const response = await list({ auth, userId: 'me' });
+  return response;
 }
 
-function main(auth, gmailInstance) {
-  let labels;
+async function main(auth, gmailInstance) {
   let coredata = {};
   let workflow;
   gmail = gmailInstance;
+
+  if (process.env.DIR) {
+    coredata.directory = process.env.DIR;
+  } else {
+    coredata.directory = await askForDirectory();
+  }
+
   if (detectCommandOptions()) {
     workflow = scanForLabelOption;
   } else {
     workflow = defaultBehaviour;
   }
-  workflow(auth, gmail, coredata)
-    .then((mailList) => {
-      coredata.mailList = mailList;
-      return fetchMailsByMailIds(auth, mailList);
-    })
-    .then((mails) => {
 
-      coredata.attachments = pluckAllAttachments(mails);
-      return fetchAndSaveAttachments(auth, coredata.attachments);
-    })
-    .then(() => {
-      spinner.stop()
-      console.log('Done');
-    })
-    .catch((e) => console.log(e));
+  try {
+    const mailList = await workflow(auth, gmail, coredata);
+    coredata.mailList = mailList;
+    
+    const mails = await fetchMailsByMailIds(auth, mailList);
+    coredata.attachments = pluckAllAttachments(mails);
+    
+    await fetchAndSaveAttachments(auth, coredata.attachments, coredata.directory);
+    spinner.stop();
+    logger.info('Done');
+  } catch (e) {
+    logger.error(e);
+  }
 }
 
 const detectCommandOptions = () => process.argv.length > 2;
 
-const defaultBehaviour = (auth, gmail, coredata) => {
-  return askForFilter()
-    .then((option) => {
-      if (option === 'label') {
-        return listLabels(auth, gmail)
-          .then((response) => {
-            labels = response.data.labels;
-            return labels;
-          })
-          .then(askForLabel)
-          .then((selectedLabel) => {
-            coredata.label = selectedLabel;
-            spinner.start()
-            return getListOfMailIdByLabel(auth, coredata.label.id, 200);
-          });
-      } else if (option === 'from') {
-        return askForMail()
-          .then((mailId) => {
-            spinner.start()
-            return getListOfMailIdByFromId(auth, mailId, 50);
-          });
-      } else {
-        spinner.start()
-        return getAllMails(auth, 500)
-      }
-    });
+const defaultBehaviour = async (auth, gmail, coredata) => {
+  const option = await askForFilter();
+  
+  if (option === 'label') {
+    const response = await listLabels(auth, gmail);
+    const labels = response.data.labels;
+    const selectedLabel = await askForLabel(labels);
+    coredata.label = selectedLabel;
+    spinner.start();
+    return getListOfMailIdByLabel(auth, coredata.label.id, 50);
+  } else if (option === 'from') {
+    const mailId = await askForMail();
+    spinner.start();
+    return getListOfMailIdByFromId(auth, mailId, 200);
+  } else {
+    spinner.start();
+    return getAllMails(auth, 500);
+  }
 };
 
-const scanForLabelOption = (auth, gmail) => {
-  return new Promise((resolve, reject) => {
-    const paramsNumber = process.argv.length;
-    if (paramsNumber == 4) {
-      const optionName = process.argv[2];
-      if (optionName === '--label') {
-        resolve(process.argv[3]);
-      }
-    }
-    reject("WARNING: expected --label LABEL_NAME option")
-  })
-    .then(labelName => {
-      return listLabels(auth, gmail)
-        .then(response => {
-          const labelObj = _.find(response.data.labels, l => l.name === labelName);
-          return getListOfMailIdByLabel(auth, labelObj.id, 200);
-        });
-    });
+const scanForLabelOption = async (auth, gmail) => {
+  const paramsNumber = process.argv.length;
+  if (paramsNumber === 4 && process.argv[2] === '--label') {
+    const labelName = process.argv[3];
+    const response = await listLabels(auth, gmail);
+    const labelObj = _.find(response.data.labels, l => l.name === labelName);
+    return getListOfMailIdByLabel(auth, labelObj.id, 200);
+  }
+  throw new Error("WARNING: expected --label LABEL_NAME option");
 };
 
-async function fetchAndSaveAttachments(auth, attachments) {
+async function fetchAndSaveAttachments(auth, attachments, dir) {
   let results = [];
   let promises = [];
   let counter = 0;
   let processed = 0;
-  spinner.text = "Fetching attachment from mails"
-  for (index in attachments) {
-    if (attachments[index].id) {
-      promises.push(fetchAndSaveAttachment(auth, attachments[index]));
+  
+  spinner.text = "Fetching attachment from mails";
+  
+  for (const attachment of attachments) {
+    if (attachment.id) {
+      promises.push(fetchAndSaveAttachment(auth, attachment, dir));
       counter++;
       processed++;
+      
       if (counter === 100) {
-        attachs = await Promise.all(promises);
-        _.merge(results, attachs);
+        const attachs = await Promise.all(promises);
+        results = results.concat(attachs);
         promises = [];
         counter = 0;
-        spinner.text = processed + " attachemets are saved"
+        spinner.text = processed + " attachments are saved";
       }
     }
   }
-  attachs = await Promise.all(promises);
-  _.merge(results, attachs);
+  
+  const attachs = await Promise.all(promises);
+  results = results.concat(attachs);
   return results;
 }
 
-function fetchAndSaveAttachment(auth, attachment) {
-  return new Promise((resolve, reject) => {
-    gmail.users.messages.attachments.get({
+async function fetchAndSaveAttachment(auth, attachment, dir) {
+  const getAttachment = util.promisify(gmail.users.messages.attachments.get).bind(gmail.users.messages.attachments);
+  
+  try {
+    const response = await getAttachment({
       auth: auth,
       userId: 'me',
       messageId: attachment.mailId,
       id: attachment.id
-    }, function (err, response) {
-      if (err) {
-        console.log('The API returned an error: ' + err);
-        reject(err);
-      }
-      if (!response) {
-        console.log('Empty response: ' + response);
-        reject(response);
-      }
-      var data = response.data.data.replaceAll('-', '+');
-      data = data.replaceAll('_', '/');
-      var content = fixBase64(data);
-      resolve(content);
     });
-  })
-    .then((content) => {
-      var fileName = path.resolve(__dirname, 'files', attachment.name);
-      return FileHelper.isFileExist(fileName)
-        .then((isExist) => {
-          if (isExist) {
-            return FileHelper.getNewFileName(fileName);
-          }
-          return fileName;
-        })
-        .then((availableFileName) => {
-          return FileHelper.saveFile(availableFileName, content);
-        })
-    })
-}
 
-
-function pluckAllAttachments(mails) {
-  return _.compact(_.flatten(_.map(mails, (m) => {
-    if (!m.data || !m.data.payload || !m.data.payload.parts) {
-      return undefined;
+    if (!response) {
+      logger.warn('Empty response');
+      return;
     }
-    return _.map(m.data.payload.parts, (p) => {
-      if (!p.body || !p.body.attachmentId) {
-        return undefined;
-      }
-      const attachment = {
-        mailId: m.data.id,
-        name: p.filename,
-        id: p.body.attachmentId
-      };
-      return attachment;
-    })
-  })));
+
+    const content = fixBase64(response.data.data);
+    const cleanFileName = sanitizeFileName(attachment.name);
+    
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    
+    const fileName = path.resolve(dir, cleanFileName);
+    const isExist = await FileHelper.isFileExist(fileName);
+    
+    let availableFileName = fileName;
+    if (isExist) {
+      availableFileName = FileHelper.getNewFileName(fileName);
+    }
+    
+    return await FileHelper.saveFile(availableFileName, content);
+
+  } catch (err) {
+    logger.error('The API returned an error: ' + err);
+    throw err;
+  }
 }
 
-function askForLabel(labels) {
-  return inquirer.prompt([
-    {
-      type: 'list',
-      name: 'label',
-      message: 'Choose label for filter mails:',
-      choices: _.map(labels, 'name'),
-      filter: val => _.find(labels, l => l.name === val)
-    }
-  ])
-    .then(answers => answers.label);
-}
-
-function askForFilter(labels) {
-  return inquirer.prompt([
-    {
-      type: 'list',
-      name: 'option',
-      message: 'How do you like to filter',
-      choices: ['Using from email Id', 'Using label', "All"],
-      filter: val => {
-        if (val === 'Using from email Id') {
-          return 'from';
-        } else if (val === 'Using label') {
-          return 'label';
-        } else {
-          return 'all'
-        }
-      }
-    }
-  ])
-    .then(answers => answers.option);
-}
-
-function askForMail() {
-  return inquirer.prompt([
-    {
-      type: 'input',
-      name: 'from',
-      message: 'Enter from mailId:'
-    }
-  ])
-    .then(answers => answers.from);
-}
 
 function getListOfMailIdByLabel(auth, labelId, maxResults = 500, nextPageToken) {
   return new Promise((resolve, reject) => {
@@ -251,21 +170,24 @@ function getListOfMailIdByLabel(auth, labelId, maxResults = 500, nextPageToken) 
       userId: 'me',
       labelIds: labelId,
       maxResults: maxResults,
-      pageToken: nextPageToken ? nextPageToken : undefined
-    }, function (err, response) {
+      pageToken: nextPageToken
+    }, (err, response) => {
       if (err) {
-        console.log('The API returned an error: ' + err);
+        logger.error('The API returned an error: ' + err);
         reject(err);
+        return;
       }
+      
+      if (response.data && response.data.messages) {
+        messageIds = messageIds.concat(response.data.messages);
+      }
+      
       if (response.data && response.data.nextPageToken) {
-        messageIds = messageIds.concat(response.data.messages)
-        spinner.text = "Reading page: " + ++pageCounter
-        resolve(getListOfMailIdByLabel(auth, labelId, 500, response.data.nextPageToken))
+        spinner.text = "Reading page: " + ++pageCounter;
+        resolve(getListOfMailIdByLabel(auth, labelId, maxResults, response.data.nextPageToken));
       } else {
-        messageIds = messageIds.concat(response.data.messages)
-        resolve(messageIds)
+        resolve(messageIds);
       }
-
     });
   });
 }
@@ -276,21 +198,25 @@ function getAllMails(auth, maxResults = 500, nextPageToken) {
       auth: auth,
       userId: 'me',
       maxResults: maxResults,
-      pageToken: nextPageToken ? nextPageToken : undefined
-    }, function (err, response) {
+      pageToken: nextPageToken
+    }, (err, response) => {
       if (err) {
-        console.log('The API returned an error: ' + err);
+        logger.error('The API returned an error: ' + err);
         reject(err);
+        return;
       }
+      
+      if (response.data && response.data.messages) {
+        messageIds = messageIds.concat(response.data.messages);
+      }
+      
       if (response.data && response.data.nextPageToken) {
-        messageIds = messageIds.concat(response.data.messages)
-        spinner.text = "Reading page: " + ++pageCounter
-        resolve(getAllMails(auth, 500, response.data.nextPageToken))
+        spinner.text = "Reading page: " + ++pageCounter;
+        resolve(getAllMails(auth, 500, response.data.nextPageToken));
       } else {
-        spinner.text = "All pages are read"
-        resolve(messageIds)
+        spinner.text = "All pages are read";
+        resolve(messageIds);
       }
-
     });
   });
 }
@@ -302,12 +228,13 @@ function getListOfMailIdByFromId(auth, mailId, maxResults = 500) {
       userId: 'me',
       q: 'from:' + mailId,
       maxResults: maxResults
-    }, function (err, response) {
+    }, (err, response) => {
       if (err) {
-        console.log('The API returned an error: ' + err);
+        logger.error('The API returned an error: ' + err);
         reject(err);
+        return;
       }
-      resolve(response.data.messages);
+      resolve(response.data.messages || []);
     });
   });
 }
@@ -317,29 +244,33 @@ async function fetchMailsByMailIds(auth, mailList) {
   let promises = [];
   let counter = 0;
   let processed = 0;
-  spinner.text = "Fetching each mail"
-  for (index in mailList) {
-    if (mailList[index]) {
-      promises.push(getMail(auth, mailList[index].id));
+  
+  spinner.text = "Fetching each mail";
+  
+  for (const mail of mailList) {
+    if (mail) {
+      promises.push(getMail(auth, mail.id));
       counter++;
       processed++;
+      
       if (counter === 100) {
-        mails = await Promise.all(promises);
-        results = results.concat(mails)
+        const mails = await Promise.all(promises);
+        results = results.concat(mails);
         promises = [];
         counter = 0;
-        spinner.text = processed + " mails fetched"
-        await sleep(3000)
+        spinner.text = processed + " mails fetched";
+        await sleep(3000);
       }
     }
-  };
-  mails = await Promise.all(promises);
-  results = results.concat(mails)
+  }
+  
+  const mails = await Promise.all(promises);
+  results = results.concat(mails);
   return results;
 }
 
 function sleep(ms) {
-  spinner.text = `sleeping for ${ms/1000} s`
+  spinner.text = `sleeping for ${ms/1000} s`;
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -350,25 +281,8 @@ function getMail(auth, mailId) {
       id: mailId,
       auth,
     }, (err, response) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(response);
-    })
-  })
-}
-
-function fixBase64(binaryData) {
-  const base64str = binaryData// base64 string from  thr response of server
-  const binary = atob(base64str.replace(/\s/g, ''));// decode base64 string, remove space for IE compatibility
-  const len = binary.length;         // get binary length
-  const buffer = new ArrayBuffer(len);         // create ArrayBuffer with binary length
-  const view = new Uint8Array(buffer);         // create 8-bit Array
-
-  // save unicode of binary data into 8-bit Array
-  for (let i = 0; i < len; i++) {
-    view[i] = binary.charCodeAt(i);
-  }
-
-  return view;
+      if (err) reject(err);
+      else resolve(response);
+    });
+  });
 }

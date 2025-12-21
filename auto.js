@@ -1,20 +1,25 @@
-const _ = require('lodash');
-const atob = require('atob');
-const fs = require('fs');
-const inquirer = require('inquirer');
-const path = require('path');
-const ora = require('ora');
-const yargs = require('yargs/yargs')
-const { hideBin } = require('yargs/helpers')
+import _ from 'lodash';
+import atob from 'atob';
+import fs from 'fs';
+import inquirer from 'inquirer';
+import path from 'path';
+import ora from 'ora';
+import yargs from 'yargs/yargs';
+import { hideBin } from 'yargs/helpers';
+import { mkdirp } from 'mkdirp';
+import { RateLimiter } from 'limiter';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const AuthFetcher = require('./lib/googleAPIWrapper');
-const FileHelper = require('./lib/fileHelper');
-const GmailHelper = require('./lib/gmail');
-const { time } = require('console');
-const mkdirp = require('mkdirp');
+import * as AuthFetcher from './lib/googleAPIWrapper.js';
+import * as FileHelper from './lib/fileHelper.js';
+import * as GmailHelper from './lib/gmail.js';
+import logger from './lib/logger.js';
 
-var RateLimiter = require('limiter').RateLimiter;
-var limiter = new RateLimiter(300, 'minute');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const limiter = new RateLimiter(300, 'minute');
 
 let pageCounter = 1;
 let listCounter = 0;
@@ -58,7 +63,7 @@ async function main(auth, gmailInstance) {
     // await sleep(30000)
   } while (nextPageToken)
   spinner.stop()
-  console.log("Check your folder :)")
+  logger.info("Check your folder :)")
 }
 
 function sleep(ms) {
@@ -82,7 +87,13 @@ async function workflow(auth, spinner, nextPageToken = null) {
     .then(() => {
       return token
     })
-    .catch((e) => console.log(e));
+    .catch((e) => {
+      if (e.response && e.response.data) {
+        logger.error(JSON.stringify(e.response.data));
+      } else {
+        logger.error(e.message || e);
+      }
+    });
 }
 
 async function fetchAndSaveAttachments(auth, attachments) {
@@ -92,20 +103,20 @@ async function fetchAndSaveAttachments(auth, attachments) {
   let counter = 0;
   spinner.text = "Fetching attachment from mails"
   if (attachments.length > 0) {
-    for (index in attachments) {
-      if (attachments[index].id) {
-        promises.push(fetchAndSaveAttachment(auth, attachments[index]));
+    for (const attachment of attachments) {
+      if (attachment.id) {
+        promises.push(fetchAndSaveAttachment(auth, attachment));
         counter++;
         processed++;
         if (counter === 100) {
-          attachs = await Promise.all(promises);
+          const attachs = await Promise.all(promises);
           _.merge(results, attachs);
           promises = [];
           counter = 0;
         }
       }
     }
-    attachs = await Promise.all(promises);
+    const attachs = await Promise.all(promises);
     _.merge(results, attachs);
   }
   return results;
@@ -120,11 +131,11 @@ function fetchAndSaveAttachment(auth, attachment) {
       id: attachment.id
     }, function (err, response) {
       if (err) {
-        console.log('The API returned an error: ' + err);
+        logger.error('The API returned an error: ' + err);
         reject(err);
       }
       if (!response) {
-        console.log('Empty response: ' + response);
+        logger.warn('Empty response: ' + response);
         reject(response);
       }
       var data = response.data.data.replaceAll('-', '+');
@@ -134,9 +145,9 @@ function fetchAndSaveAttachment(auth, attachment) {
     });
   })
     .then((content) => {
-      dirPath = FileHelper.getParentDir(argv, __dirname, attachment.time);
+      let dirPath = FileHelper.getParentDir(argv, __dirname, attachment.time);
       mkdirp.sync(dirPath)
-      var fileName = path.resolve(dirPath, attachment.name);
+      var fileName = path.resolve(dirPath, attachment.name.replace(/[/\\?%*:|"<>]/g, '-'));
       return FileHelper.isFileExist(fileName)
         .then((isExist) => {
           if (isExist) {
@@ -190,7 +201,7 @@ function getMailIdsFromPage(auth, maxResults = 500, nextPageToken) {
     }
     gmail.users.messages.list(listOptions, function (err, response) {
       if (err) {
-        console.log('The API returned an error: ' + err);
+        logger.error('The API returned an error: ' + err);
         reject(err);
       }
       if (response.data && response.data.nextPageToken) {
