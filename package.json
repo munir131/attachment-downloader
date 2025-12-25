@@ -3,7 +3,8 @@
   "version": "1.2.0",
   "description": "Gmail bulk attachment downloader",
   "engines": {
-    "node": ">=22"
+    "node": ">=22",
+    "bun": ">=1.0.0"
   },
   "main": "index.js",
   "type": "module",
@@ -27,7 +28,18 @@
     "jest": "^30.2.0"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:bun": "bun test",
+    "start": "node index.js",
+    "start:bun": "bun index.js",
+    "dev": "node --watch index.js",
+    "dev:bun": "bun --watch index.js",
+    "build": "bun build ./index.js --outdir ./dist --target node",
+    "build:binary": "bun build ./index.js --compile --outfile ./attachment-downloader",
+    "build:binary:all": "bun run build:binary:windows && bun run build:binary:macos && bun run build:binary:linux",
+    "build:binary:windows": "bun build ./index.js --compile --target bun-windows-x64 --outfile ./dist/attachment-downloader-windows-x64.exe",
+    "build:binary:macos": "bun build ./index.js --compile --target bun-darwin-x64 --outfile ./dist/attachment-downloader-macos-x64",
+    "build:binary:linux": "bun build ./index.js --compile --target bun-linux-x64 --outfile ./dist/attachment-downloader-linux-x64"
   },
   "repository": {
     "type": "git",
@@ -39,6 +51,7 @@
     "Attachment",
     "Download",
     "Node",
+    "Bun",
     "Google",
     "API",
     "oAuth",

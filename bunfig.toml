@@ -1,0 +1,9 @@
+[install]
+lockfile = true
+cache = true
+
+[run]
+shell = "bash"
+
+[test]
+preload = ["./test/setup.js"]

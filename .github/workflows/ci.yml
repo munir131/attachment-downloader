@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Node.js and Bun.js CI
 
 on:
   push:
@@ -12,17 +12,44 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24.x]
+        runtime: [node, bun]
+        include:
+          - runtime: node
+            node-version: 24.x
+          - runtime: bun
+            bun-version: latest
 
     steps:
     - uses: actions/checkout@v3
-    - name: Use Node.js ${{ matrix.node-version }}
+    
+    - name: Setup Node.js
+      if: matrix.runtime == 'node'
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
-    - run: npm test -- --coverage
+    
+    - name: Setup Bun
+      if: matrix.runtime == 'bun'
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: ${{ matrix.bun-version }}
+    
+    - name: Install dependencies (Node.js)
+      if: matrix.runtime == 'node'
+      run: npm ci
+    
+    - name: Install dependencies (Bun)
+      if: matrix.runtime == 'bun'
+      run: bun install
+    
+    - name: Run tests (Node.js)
+      if: matrix.runtime == 'node'
+      run: npm test -- --coverage
+    
+    - name: Run tests (Bun)
+      if: matrix.runtime == 'bun'
+      run: bun run test
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
