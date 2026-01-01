@@ -3,12 +3,13 @@ import { GmailClient } from './integration/gmailClient.js';
 import { startInteractive } from './view/interactive.js';
 import { startAutomated } from './view/automated.js';
 
-getAuthAndGmail((auth) => {
+getAuthAndGmail(async (auth) => {
     const gmailClient = new GmailClient(auth);
     
     // Check if arguments are provided (ignoring node and script path)
     if (process.argv.length > 2) {
-        startAutomated(auth, gmailClient);
+        await startAutomated(auth, gmailClient);
+        process.exit(0);
     } else {
         startInteractive(auth, gmailClient);
     }
