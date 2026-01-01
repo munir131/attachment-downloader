@@ -58,11 +58,15 @@ function getNewToken(oAuth2Client, callback) {
     access_type: 'offline',
     scope: SCOPES,
   });
-  logger.info('Authorize this app by visiting this url:', authUrl);
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  logger.info(`
+${'='.repeat(80)}
+  STEP 1: Authorize this app by visiting the following URL in your browser:
+  ${authUrl}
+
+  STEP 2: After authorizing, you will be redirected to a local server.
+  If the browser doesn't open automatically, please copy and paste the URL above.
+${'='.repeat(80)}
+`);
   server = http.createServer(function (req, res) {
     const queryObject = url.parse(req.url, true).query;
     const code = queryObject.code;

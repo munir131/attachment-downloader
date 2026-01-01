@@ -3,7 +3,7 @@ lockfile = true
 cache = true
 
 [run]
-shell = "bash"
+shell = "system"
 
 [test]
 preload = ["./test/setup.js"]
