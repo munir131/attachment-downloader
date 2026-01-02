@@ -15,7 +15,7 @@ jobs:
         runtime: [node, bun]
         include:
           - runtime: node
-            node-version: 24.x
+            node-version: 22.x
           - runtime: bun
             bun-version: latest
 
