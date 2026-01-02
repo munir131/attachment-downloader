@@ -41,7 +41,7 @@ jobs:
 
     - name: Build binary
       run: |
-        bun build ./index.js --compile --target ${{ matrix.target }} --output ./${{ matrix.binary_name }}
+        bun build ./index.js --compile --target ${{ matrix.target }} --outfile ./${{ matrix.binary_name }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
