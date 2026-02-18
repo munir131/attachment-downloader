@@ -45,8 +45,27 @@ export class AttachmentDownloader {
 
     async fetchMessageIds(filter, pageToken) {
         const options = { maxResults: 500, pageToken };
-        if (filter.type === 'label') options.labelIds = [filter.value.id];
-        if (filter.type === 'from') options.q = `from:${filter.value}`;
+        const queryParts = [];
+
+        if (filter.label) {
+            options.labelIds = [filter.label.id];
+        }
+
+        if (filter.from) {
+            queryParts.push(`from:${filter.from}`);
+        }
+
+        if (filter.before) {
+            queryParts.push(`before:${filter.before}`);
+        }
+
+        if (filter.after) {
+            queryParts.push(`after:${filter.after}`);
+        }
+
+        if (queryParts.length > 0) {
+            options.q = queryParts.join(' ');
+        }
         
         try {
             const response = await this.gmail.listMessages(options);

@@ -7,17 +7,28 @@ export async function startInteractive(auth, gmailClient) {
     try {
         const directory = await Prompts.askForDirectory();
         
-        const option = await Prompts.askForFilter();
+        const options = await Prompts.askForFilter();
         let filter = {};
 
-        if (option === 'label') {
+        if (options.includes('label')) {
             const labels = await gmailClient.listLabels();
             const selectedLabel = await Prompts.askForLabel(labels);
-            filter = { type: 'label', value: selectedLabel };
-        } else if (option === 'from') {
+            filter.label = selectedLabel;
+        }
+
+        if (options.includes('from')) {
             const mailId = await Prompts.askForMail();
-            filter = { type: 'from', value: mailId };
-        } else {
+            filter.from = mailId;
+        }
+
+        if (options.includes('date')) {
+            const before = await Prompts.askForDate('before');
+            const after = await Prompts.askForDate('after');
+            if (before) filter.before = before;
+            if (after) filter.after = after;
+        }
+
+        if (Object.keys(filter).length === 0) {
             filter = { type: 'all' };
         }
 

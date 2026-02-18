@@ -10,17 +10,31 @@ const __dirname = dirname(__filename);
 export function askForFilter(labels) {
     return inquirer.prompt([
         {
-            type: 'select',
-            name: 'option',
-            message: 'How do you like to filter',
+            type: 'checkbox',
+            name: 'options',
+            message: 'How do you like to filter (select multiple with space)',
             choices: [
                 { name: 'Using from email Id', value: 'from' },
                 { name: 'Using label', value: 'label' },
-                { name: 'All', value: 'all' }
+                { name: 'Date range (before/after)', value: 'date' }
             ]
         }
     ])
-        .then(answers => answers.option);
+        .then(answers => answers.options);
+}
+
+export function askForDate(type) {
+    return inquirer.prompt([
+        {
+            type: 'input',
+            name: 'date',
+            message: `Enter ${type} date (YYYY/MM/DD):`,
+            validate: function(value) {
+                if (value.match(/^\d{4}\/\d{2}\/\d{2}$/)) return true;
+                return 'Please enter a valid date in YYYY/MM/DD format';
+            }
+        }
+    ]).then(answers => answers.date);
 }
 
 export function askForMail() {
