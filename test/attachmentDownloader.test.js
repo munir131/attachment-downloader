@@ -52,7 +52,8 @@ describe('AttachmentDownloader', () => {
             const result = await downloader.fetchMessageIds({ label: { id: 'LABEL_ID' } });
             
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                labelIds: ['LABEL_ID']
+                labelIds: ['LABEL_ID'],
+                q: 'has:attachment'
             }));
             expect(result.messages).toHaveLength(1);
             expect(result.nextPageToken).toBe('token');
@@ -69,7 +70,7 @@ describe('AttachmentDownloader', () => {
             const filter = { from: 'test@example.com' };
             await downloader.fetchMessageIds(filter);
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                q: 'from:test@example.com'
+                q: 'has:attachment from:test@example.com'
             }));
         });
 
@@ -78,7 +79,7 @@ describe('AttachmentDownloader', () => {
             const filter = { before: '2023/01/01' };
             await downloader.fetchMessageIds(filter);
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                q: 'before:2023/01/01'
+                q: 'has:attachment before:2023/01/01'
             }));
         });
 
@@ -87,7 +88,7 @@ describe('AttachmentDownloader', () => {
             const filter = { after: '2023/01/01' };
             await downloader.fetchMessageIds(filter);
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                q: 'after:2023/01/01'
+                q: 'has:attachment after:2023/01/01'
             }));
         });
 
@@ -100,7 +101,7 @@ describe('AttachmentDownloader', () => {
             };
             await downloader.fetchMessageIds(filter);
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                q: 'from:test@example.com before:2023/01/01 after:2022/01/01'
+                q: 'has:attachment from:test@example.com before:2023/01/01 after:2022/01/01'
             }));
         });
 
@@ -113,7 +114,7 @@ describe('AttachmentDownloader', () => {
             await downloader.fetchMessageIds(filter);
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
                 labelIds: ['LABEL_ID'],
-                q: 'from:test@example.com'
+                q: 'has:attachment from:test@example.com'
             }));
         });
     });
