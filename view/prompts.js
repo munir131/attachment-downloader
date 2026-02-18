@@ -12,7 +12,7 @@ export function askForFilter(labels) {
         {
             type: 'checkbox',
             name: 'options',
-            message: 'How do you like to filter (select multiple with space)',
+            message: 'How do you like to filter (Press <space> to select, <enter> to confirm)',
             choices: [
                 { name: 'Using from email Id', value: 'from' },
                 { name: 'Using label', value: 'label' },
@@ -28,8 +28,9 @@ export function askForDate(type) {
         {
             type: 'input',
             name: 'date',
-            message: `Enter ${type} date (YYYY/MM/DD):`,
+            message: `Enter ${type} date (YYYY/MM/DD) [Leave empty to skip]:`,
             validate: function(value) {
+                if (!value) return true;
                 if (value.match(/^\d{4}\/\d{2}\/\d{2}$/)) return true;
                 return 'Please enter a valid date in YYYY/MM/DD format';
             }

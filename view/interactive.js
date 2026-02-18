@@ -26,9 +26,14 @@ export async function startInteractive(auth, gmailClient) {
             const after = await Prompts.askForDate('after');
             if (before) filter.before = before;
             if (after) filter.after = after;
+            
+            if (!before && !after) {
+                console.log('No date range provided. Ignoring date filter.');
+            }
         }
 
         if (Object.keys(filter).length === 0) {
+            console.log('No filters selected. Downloading ALL attachments...');
             filter = { type: 'all' };
         }
 
