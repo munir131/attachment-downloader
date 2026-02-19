@@ -22,18 +22,28 @@ export async function startAutomated(auth, gmailClient) {
             type: 'string',
             description: 'Directory to save files'
         })
+        .option('before', {
+            type: 'string',
+            description: 'Filter emails before this date (YYYY/MM/DD)'
+        })
+        .option('after', {
+            type: 'string',
+            description: 'Filter emails after this date (YYYY/MM/DD)'
+        })
         .argv;
 
-    let filter = { type: 'all' };
+    let filter = {};
     
     if (argv.from) {
-        filter = { type: 'from', value: argv.from };
-    } else if (argv.label) {
+        filter.from = argv.from;
+    }
+
+    if (argv.label) {
         try {
             const labels = await gmailClient.listLabels();
             const labelObj = labels.find(l => l.name === argv.label);
             if (labelObj) {
-                filter = { type: 'label', value: labelObj };
+                filter.label = labelObj;
             } else {
                 logger.error(`Label ${argv.label} not found.`);
                 process.exit(1);
@@ -42,6 +52,18 @@ export async function startAutomated(auth, gmailClient) {
             logger.error('Failed to list labels: ' + e.message);
             process.exit(1);
         }
+    }
+
+    if (argv.before) {
+        filter.before = argv.before;
+    }
+
+    if (argv.after) {
+        filter.after = argv.after;
+    }
+
+    if (Object.keys(filter).length === 0) {
+        filter = { type: 'all' };
     }
 
     const spinner = ora('Starting automated download...').start();

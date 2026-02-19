@@ -49,10 +49,11 @@ describe('AttachmentDownloader', () => {
                 }
             });
 
-            const result = await downloader.fetchMessageIds({ type: 'label', value: { id: 'LABEL_ID' } });
+            const result = await downloader.fetchMessageIds({ label: { id: 'LABEL_ID' } });
             
             expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
-                labelIds: ['LABEL_ID']
+                labelIds: ['LABEL_ID'],
+                q: 'has:attachment'
             }));
             expect(result.messages).toHaveLength(1);
             expect(result.nextPageToken).toBe('token');
@@ -60,8 +61,61 @@ describe('AttachmentDownloader', () => {
 
         it('should handle errors', async () => {
             mockGmailClient.listMessages.mockRejectedValue(new Error('API Error'));
-            await expect(downloader.fetchMessageIds({ type: 'all' }))
+            await expect(downloader.fetchMessageIds({}))
                 .rejects.toThrow('API Error');
+        });
+
+        it('should filter by from address', async () => {
+            mockGmailClient.listMessages.mockResolvedValue({ data: { messages: [], nextPageToken: null } });
+            const filter = { from: 'test@example.com' };
+            await downloader.fetchMessageIds(filter);
+            expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
+                q: 'has:attachment from:test@example.com'
+            }));
+        });
+
+        it('should filter by before date', async () => {
+            mockGmailClient.listMessages.mockResolvedValue({ data: { messages: [], nextPageToken: null } });
+            const filter = { before: '2023/01/01' };
+            await downloader.fetchMessageIds(filter);
+            expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
+                q: 'has:attachment before:2023/01/01'
+            }));
+        });
+
+        it('should filter by after date', async () => {
+            mockGmailClient.listMessages.mockResolvedValue({ data: { messages: [], nextPageToken: null } });
+            const filter = { after: '2023/01/01' };
+            await downloader.fetchMessageIds(filter);
+            expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
+                q: 'has:attachment after:2023/01/01'
+            }));
+        });
+
+        it('should combine filters', async () => {
+            mockGmailClient.listMessages.mockResolvedValue({ data: { messages: [], nextPageToken: null } });
+            const filter = {
+                from: 'test@example.com',
+                before: '2023/01/01',
+                after: '2022/01/01'
+            };
+            await downloader.fetchMessageIds(filter);
+            expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
+                q: 'has:attachment from:test@example.com before:2023/01/01 after:2022/01/01'
+            }));
+        });
+
+        it('should combine label and other filters', async () => {
+            mockGmailClient.listMessages.mockResolvedValue({ data: { messages: [], nextPageToken: null } });
+            const filter = {
+                label: { id: 'LABEL_ID' },
+                from: 'test@example.com'
+            };
+            await downloader.fetchMessageIds(filter);
+            expect(mockGmailClient.listMessages).toHaveBeenCalledWith(expect.objectContaining({
+                labelIds: ['LABEL_ID'],
+                q: 'has:attachment from:test@example.com'
+            }));
         });
     });
 

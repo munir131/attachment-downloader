@@ -11,7 +11,7 @@ export class AttachmentDownloader {
     constructor(gmailClient, options = {}) {
         this.gmail = gmailClient;
         this.baseDir = options.directory || './files';
-        this.limiter = new RateLimiter({ tokensPerInterval: 300, interval: 'minute' });
+        this.limiter = new RateLimiter({ tokensPerInterval: 1500, interval: 'minute' });
         this.onProgress = options.onProgress || (() => {});
         this.folderStructure = options.folderStructure || {}; // { fy: boolean, from: boolean }
     }
@@ -45,8 +45,25 @@ export class AttachmentDownloader {
 
     async fetchMessageIds(filter, pageToken) {
         const options = { maxResults: 500, pageToken };
-        if (filter.type === 'label') options.labelIds = [filter.value.id];
-        if (filter.type === 'from') options.q = `from:${filter.value}`;
+        const queryParts = ['has:attachment'];
+
+        if (filter.label) {
+            options.labelIds = [filter.label.id];
+        }
+
+        if (filter.from) {
+            queryParts.push(`from:${filter.from}`);
+        }
+
+        if (filter.before) {
+            queryParts.push(`before:${filter.before}`);
+        }
+
+        if (filter.after) {
+            queryParts.push(`after:${filter.after}`);
+        }
+
+        options.q = queryParts.join(' ');
         
         try {
             const response = await this.gmail.listMessages(options);
